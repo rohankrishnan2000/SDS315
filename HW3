@@ -1,8 +1,20 @@
 ---
 title: "Hw3"
-output: html_document
-date: "2025-02-12"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: true
+    keep_tex: true
+    toc: false
+  html_document: default
+date: "2025-01-28"
+header-includes:
+  - \usepackage{hyperref}
+  - \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
 ---
+# Github
+You can find my code on Github [\href{https://github.com/rohankrishnan2000/SDS315/blob/main/HW3}{\textcolor{blue}{\underline{here}}}].
+
 
 ```{r setup, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -49,6 +61,7 @@ ggplot(bootstrap_diff_competitors, aes(x = result)) +
        y = "Frequency") +
   theme_minimal()
 # Print the table
+
 print(competitors_table)
 
 ```
@@ -166,7 +179,7 @@ ggplot(bootstrap_diff, aes(x = result)) +
   theme_minimal()
 ```
 
-Here, I am investigating whether gas stations with highway access charge more for gas. I have no conception of whether or not highway access affects gas prices. From looking at the data again, I see some variation, but no clear pattern, so I performed a bootstrap analysis of the difference in mean gas prices. Based on the bootstrap, I can say with 95% confidence that the difference in average gas prices between stations with highway access and those without is somewhere between 0.0089 and 0.0814. Since this confidence interval is entirely positive, it provides evidence that gas stations with highway access tend to charge higher prices compared to those without highway access.
+Here, I am investigating whether gas stations with highway access charge more for gas. I have no conception of whether or not highway access affects gas prices. From looking at the data again, I see some variation, but no clear pattern, so I performed a bootstrap analysis of the difference in mean gas prices. Based on the bootstrap, I can say with 95% confidence that the difference in average gas prices between stations with highway access and those without is somewhere between 0.0089 and 0.0814. Since this confidence interval does not include 0, it provides evidence that gas stations with highway access tend to charge higher prices compared to those without highway access.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 gas_prices <- gas_prices %>% mutate(Price = as.numeric(Price), Brand = trimws(Brand))
@@ -257,7 +270,7 @@ ed_int <- confint(t.test(Q1_Happy ~ Show, data = Ed_nbc_data))
 print(ed_int)
 ```
 I am attempting to determine if there is evidence that one show consistently produces
-a higher mean Q1_Happy response among viewers. To do this I constructed a 95% confidence interval. The confidence interval shows that there's a 95% chance the difference is between -0.103 to 0.40. Because 0 is in the interval, there is no evidence to support either show causing viewers to be happier while watching. 
+a higher mean Q1_Happy response among viewers. To do this I constructed a 95% confidence interval. The confidence interval shows that we're a 95% confident the difference is between -0.103 to 0.40. Because 0 is in the interval, there is no evidence to support either show causing viewers to be happier while watching. 
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -322,11 +335,4 @@ print(paste("95% Confidence Interval: [", round(conf_interval[1], 4), ",", round
 ```
 
 I want to determine whether EBay’s paid search advertising on Google generates additional revenue, as indicated by a lower revenue ratio in the treatment group compared to the control group. To answer this question, I made a 95% confidence interval for the difference in revenue ratios between the two groups. The confidence interval shows that there is a 95% chance that the true difference in revenue ratios between the treatment and control groups falls between 0.013 and 0.0916. Because this interval does not include zero, it suggests that the revenue ratio is higher in the treatment group, meaning that pausing paid search did not significantly reduce revenue. Since the confidence interval is entirely above zero, this evidence suggests that EBay’s paid search advertising on Google did not generate additional revenue beyond what would have occurred organically. 
-
-
-
-
-
-
-
 
