@@ -1,0 +1,217 @@
+---
+title: "Hw3"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: true
+    keep_tex: true
+    toc: false
+  html_document: default
+date: "2025-01-28"
+header-includes:
+  - \usepackage{hyperref}
+  - \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+---
+# Github
+You can find my code on Github [\href{https://github.com/rohankrishnan2000/SDS315/blob/main/HW3}{\textcolor{blue}{\underline{here}}}].
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# **Question 1**
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(mosaic)
+library(ggplot2)
+
+set.seed(42)
+n_sim <- 100000  
+n_trades <- 2021  
+p_baseline <- 0.024 
+observed_proportion <- 70 / n_trades  
+
+data_sim <- do(n_sim) * rflip(n_trades, prob = p_baseline)
+data_sim$proportion <- data_sim$heads / n_trades 
+
+p_value <- mean(data_sim$proportion >= observed_proportion)
+
+ggplot(data_sim, aes(x = proportion)) +
+  geom_histogram(binwidth = 0.001, fill = "lightblue", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = observed_proportion, color = "red", linetype = "dashed", size = 1.2) +
+  labs(title = "Monte Carlo Distribution of Flagged Trade Proportions",
+       x = "Proportion of Flagged Trades",
+       y = "Frequency") +
+  theme_minimal()
+
+cat("P-value:", p_value, "\n")
+
+
+
+```
+
+The null Hypothesis is that the Iron Banks trades are being flagged at 2.4%, and the observed difference in flagged trades being higher is due to random chance. The test statistic I used is the proportion of flagged trades. With the P-value being 0.00173, which is very low, I can say that likely the observed difference in flagged trades is not due to random chance and likely caused by insider trading.     
+
+# **Question 2**
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+set.seed(42)  
+n_sim <- 100000
+n_inspections <- 50  
+p_baseline <- 0.03  
+observed_proportion <- 8 / n_inspections
+
+data_sim <- do(n_sim) * rflip(n_inspections, prob = p_baseline)
+data_sim$proportion <- data_sim$heads / n_inspections  
+
+
+p_value <- mean(data_sim$proportion >= observed_proportion)
+
+ggplot(data_sim, aes(x = proportion)) +
+  geom_histogram(binwidth = 0.01, fill = "lightblue", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = observed_proportion, color = "red", linetype = "dashed", size = 1.2) +
+  labs(title = "Monte Carlo Distribution of Health Code Violation Proportions",
+       x = "Proportion of Inspections with Violations",
+       y = "Frequency") +
+  theme_minimal()
+
+cat("P-value:", p_value, "\n")
+```
+The null hypothesis is that the health code violations at Gourmet Bites occur at the same 3% rate as other restaurants, and the observed higher proportion of violations is due to random chance. The test statistic used is the proportion of inspections that resulted in health code violations. The p-value calculated is 0.00012, which is extremely low. Since the p-value is much lower than 0.05, it suggests that the observed violation rate at Gourmet Bites is unlikely to be due to random chance, indicating that the restaurant may have systemic health code issues.
+
+# **Question 2**
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+oj_counts <- c(85, 56, 59, 27, 13)
+
+expected_proportions <- c(0.30, 0.25, 0.20, 0.15, 0.10)
+
+total_jurors <- sum(oj_counts)
+
+expected_counts <- total_jurors * expected_proportions
+
+chi_test <- chisq.test(oj_counts, p = expected_proportions, rescale.p = TRUE)
+
+p_value <- chi_test$p.value
+
+data_plot <- data.frame(
+  Group = factor(1:5),
+  Observed = oj_counts,
+  Expected = expected_counts
+)
+
+ggplot(data_plot, aes(x = Group)) +
+  geom_bar(aes(y = Observed, fill = "Observed"), stat = "identity", position = "dodge", alpha = 0.7) +
+  geom_bar(aes(y = Expected, fill = "Expected"), stat = "identity", position = "dodge", alpha = 0.7) +
+  scale_fill_manual(values = c("Observed" = "lightblue", "Expected" = "gray")) +
+  labs(title = "Observed vs Expected Jury Composition",
+       x = "Group",
+       y = "Count") +
+  theme_minimal()
+
+cat("Chi-square test statistic:", chi_test$statistic, "\n")
+cat("P-value:", p_value, "\n")
+```
+
+My null hypothesis is that the distribution of jurors on the panel is not significantly different from the county’s population proportions, meaning any differences observed are due to random chance not than racial bias. The test statistic used is the chi-square statistic, because we need to compare the expected jury composition to what was observed. I got a chi-square value of 12.42, and a p-value of 0.014.Since the p-value is less than 0.05, we reject the null hypothesis, showing that the jury selection differs significantly from the expected distribution. This suggests possible bias in jury selection, but other explanations, such as differences in juror availability, exemptions, or selection variations, all of these in relation to race could be factors. Further investigation could involve analyzing the selection process in more depth, reviewing  challenge patterns, and comparing results across different judges to determine if the differences are caused by this judge or part of a broader trend.
+
+# **Question 4**
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+brown_sentences <- readLines("brown_sentences.txt")
+
+letter_frequencies <- read_csv("letter_frequencies.csv")
+
+if (is.null(letter_frequencies) || !("Letter" %in% colnames(letter_frequencies)) || !("Probability" %in% colnames(letter_frequencies))) {
+  stop("Error: 'letter_frequencies.csv' not loaded correctly or missing 'Letter' or 'Probability' columns.")
+}
+
+# Convert letter_frequencies to a named vector for easier lookup
+if (nrow(letter_frequencies) > 0) {
+  expected_freq <- letter_frequencies$Probability
+  names(expected_freq) <- letter_frequencies$Letter
+} else {
+  stop("Error: 'letter_frequencies.csv' is empty.")
+}
+
+calculate_chi_squared <- function(sentence) {
+  sentence <- gsub("[^[:alpha:]]", "", sentence)  # Remove non-letter characters
+  sentence <- toupper(sentence)  # Convert to uppercase
+  
+  if (nchar(sentence) == 0) {
+    return(NA)  
+  }
+
+  letter_counts <- table(strsplit(sentence, "")[[1]])
+  
+  all_letters <- names(expected_freq)
+  missing_letters <- setdiff(all_letters, names(letter_counts))
+  for (letter in missing_letters) {
+    letter_counts[letter] <- 0
+  }
+
+  observed_counts <- as.numeric(letter_counts[all_letters])
+  observed_counts[is.na(observed_counts)] <- 0
+
+  sentence_length <- nchar(sentence)
+  expected_counts <- expected_freq * sentence_length
+
+  chi_squared <- sum((observed_counts - expected_counts)^2 / expected_counts)
+  return(chi_squared)
+}
+
+chi_squared_values <- sapply(brown_sentences, calculate_chi_squared)
+chi_squared_values <- chi_squared_values[!is.na(chi_squared_values)]  # Remove NAs
+
+plot_data <- data.frame(chi_squared_values = chi_squared_values)
+
+ggplot(plot_data, aes(x = chi_squared_values)) +
+  geom_histogram(fill = "forestgreen", color = "white") +
+  labs(
+    title = "Chi-Squared Distribution of Brown Corpus Sentences",
+    x = "Chi-Squared Statistic",
+    y = "Frequency"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(color = "darkgreen", size = 14, face = "bold"),
+    axis.title = element_text(color = "darkblue", size = 12)
+  )
+
+sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum's new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker's inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project's effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone's expectations."
+)
+
+calculate_p_value <- function(sentence, null_distribution) {
+  chi_squared <- calculate_chi_squared(sentence)
+  if (is.na(chi_squared)) {
+    return(NA)
+  }
+  p_value <- mean(null_distribution >= chi_squared, na.rm = TRUE)
+  return(p_value)
+}
+
+p_values <- sapply(sentences, calculate_p_value, null_distribution = chi_squared_values)
+
+p_value_table <- tibble(
+  Sentence = 1:length(sentences),
+  Text = sentences,
+  P_value = round(p_values, 3)
+)
+
+print("P-values for the ten sentences:")
+print(p_value_table)
+
+```
+
+The watermarked sentence is likely sentence 6, as it has a small p-value of 0.009, suggesting that the differences in letter counts are not just due to random chance in writing, and instead caused by a LLM systematically causing these differences. 
+
