@@ -1,0 +1,252 @@
+---
+title: "homework7"
+output:
+  pdf_document: default
+  html_document: default
+date: "2025-04-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# **Question 1**
+```{r, echo=FALSE, message=FALSE,warning=FALSE}
+armfold <- read.csv("armfold.csv")
+table(armfold$Sex)
+
+#Part A
+male_prop <- mean(armfold$LonR_fold[armfold$Sex == "Male"])
+female_prop <- mean(armfold$LonR_fold[armfold$Sex == "Female"])
+
+
+#Part B
+obs_diff <- male_prop - female_prop
+
+#Part C
+x <- c(sum(armfold$LonR_fold[armfold$Sex == "Male"]),
+       sum(armfold$LonR_fold[armfold$Sex == "Female"]))
+
+n <- c(sum(armfold$Sex == "Male"),
+       sum(armfold$Sex == "Female"))
+
+prop.test(x = x, n = n, correct = FALSE)
+```
+
+A. There are 111 females, and 106 males. The sample proportion of males who folded their left on top is 0.472, and the female proportion who folded their left arm on top is 0.423
+
+B. the observed difference in proportions is 0.0483
+
+C. Based on my R code, I got a confidence interval of  -0.0839 to 0.1804. 
+
+D. If we were to repeat this sampling process many times, then we would expect that about 95% of the resulting confidence intervals would contain the true difference in proportions of males and females who fold their left arm on top.
+
+E. The standard error represents the typical amount of variation we would expect in the difference between sample proportions (male minus female) if we repeated the experiment many times. It measures the sampling variability in the estimate of the difference.
+
+F. The sampling distribution in this context refers to the distribution of the difference in sample proportions (male - female) that we would get if we repeatedly took random samples from the same population. What varies is the sample proportions and their difference from sample to sample.What stays fixed is the true population proportions (which we’re trying to estimate).
+
+G. The central limit theorem justifies using a normal distribution here. The CLT basically says that when sample sizes are large enough, the sampling distribution of a sample statistic will be approximately normal even if the original data is not normally distributed.
+
+H. We can't conclude that there's no real sex difference in arm folding even though the interval contains 0. This because the interval contains 0 which means the data says that there's not strong evidence that there is a difference, but this doesn't definitively prove that there is no difference.
+
+I. The confidence intervals from sample to sample would be different, but we would expect that 95% of them would contain the true population proportion
+
+# **Question 2**
+**Part A**
+```{r, echo=FALSE, message=FALSE,warning=FALSE}
+turnout <- read.csv("turnout.csv")
+
+gotv_yes <- turnout[turnout$GOTV_call == 1, ]
+gotv_no  <- turnout[turnout$GOTV_call == 0, ]
+
+prop_gotv_yes <- mean(gotv_yes$voted1998)
+prop_gotv_no  <- mean(gotv_no$voted1998)
+
+
+x <- c(sum(gotv_yes$voted1998), sum(gotv_no$voted1998))
+n <- c(nrow(gotv_yes), nrow(gotv_no))
+
+prop.test(x, n, correct = FALSE)
+```
+
+Proportion voting without a GOTV call: 0.444
+Proportion voting with a GOTV call: 0.648
+Confidence Interval: [0.143, 0.264]
+
+
+**Part B**
+```{r, echo=FALSE, message=FALSE,warning=FALSE}
+library(dplyr)
+library(ggplot2)
+
+confounder_means <- turnout %>%
+  group_by(GOTV_call) %>%
+  summarise(
+    prior_vote = mean(voted1996),
+    avg_age = mean(AGE),
+    major_party = mean(MAJORPTY)
+  )
+
+print(confounder_means)
+
+n_gotv <- sum(turnout$GOTV_call == 1)
+n_nogotv <- sum(turnout$GOTV_call == 0)
+
+v1 <- mean(turnout$voted1996[turnout$GOTV_call == 1])
+v0 <- mean(turnout$voted1996[turnout$GOTV_call == 0])
+diff_v <- v1 - v0
+se_v <- sqrt((v1*(1-v1)/n_gotv) + (v0*(1-v0)/n_nogotv))
+ci_v <- c(diff_v - 1.96*se_v, diff_v + 1.96*se_v)
+
+a1 <- mean(turnout$AGE[turnout$GOTV_call == 1])
+a0 <- mean(turnout$AGE[turnout$GOTV_call == 0])
+diff_a <- a1 - a0
+se_a <- sqrt(var(turnout$AGE[turnout$GOTV_call == 1])/n_gotv + var(turnout$AGE[turnout$GOTV_call == 0])/n_nogotv)
+ci_a <- c(diff_a - 1.96*se_a, diff_a + 1.96*se_a)
+
+m1 <- mean(turnout$MAJORPTY[turnout$GOTV_call == 1])
+m0 <- mean(turnout$MAJORPTY[turnout$GOTV_call == 0])
+diff_m <- m1 - m0
+se_m <- sqrt((m1*(1-m1)/n_gotv) + (m0*(1-m0)/n_nogotv))
+ci_m <- c(diff_m - 1.96*se_m, diff_m + 1.96*se_m)
+
+confounder_results <- data.frame(
+  Confounder = c("Prior Voting (1996)", "Age", "Party Membership"),
+  Difference = c(diff_v, diff_a, diff_m),
+  CI_Lower = c(ci_v[1], ci_a[1], ci_m[1]),
+  CI_Upper = c(ci_v[2], ci_a[2], ci_m[2])
+)
+
+print(confounder_results)
+
+
+turnout_by_v96 <- turnout %>%
+  group_by(voted1996) %>%
+  summarise(turnout_1998 = mean(voted1998), n = n())
+print(turnout_by_v96)
+
+turnout_by_party <- turnout %>%
+  group_by(MAJORPTY) %>%
+  summarise(turnout_1998 = mean(voted1998), n = n())
+print(turnout_by_party)
+
+turnout$age_band <- cut(turnout$AGE, breaks = c(18, 35, 50, 65, 100), labels = c("18-35", "36-50", "51-65", "66+"))
+turnout_by_age <- turnout %>%
+  group_by(age_band) %>%
+  summarise(turnout_1998 = mean(voted1998), n = n())
+print(turnout_by_age)
+
+ggplot(turnout_by_v96, aes(x = factor(voted1996), y = turnout_1998)) +
+  geom_bar(stat = "identity", fill = "darkblue") +
+  geom_text(aes(label = round(turnout_1998, 2), y = turnout_1998 + 0.03)) +
+  labs(title = "1998 Turnout by 1996 Voting Behavior", x = "Voted in 1996", y = "1998 Turnout Rate") +
+  theme_minimal()
+
+ggplot(turnout_by_party, aes(x = factor(MAJORPTY), y = turnout_1998)) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  geom_text(aes(label = round(turnout_1998, 2), y = turnout_1998 + 0.03)) +
+  labs(title = "1998 Turnout by Party Membership", x = "Major Party Member", y = "1998 Turnout Rate") +
+  theme_minimal()
+
+ggplot(turnout_by_age, aes(x = age_band, y = turnout_1998)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  geom_text(aes(label = round(turnout_1998, 2), y = turnout_1998 + 0.03)) +
+  labs(title = "1998 Turnout by Age Group", x = "Age Group", y = "1998 Turnout Rate") +
+  theme_minimal()
+```
+Results and Interpretation:
+The analysis shows that voted1996, AGE, and MAJORPTY are confounders because they influence both GOTV call assignment and voting in 1998.
+People who received a GOTV call were:
+  - 18.17% more likely to have voted in 1996 (95% CI: 12.45%, 23.90%),
+  - 8.88 years older on average (CI: 6.38, 11.38),
+  - 5.69% more likely to be in a major party (CI: 0.64%, 10.73%).
+These traits also predict turnout:
+  - 1996 voters had a 64.0% turnout in 1998 vs 22.9% for non-voters,
+  - Turnout rose with age (from 22.8% to 62.0% across age groups),
+  - Major party members voted more (48.2%) than non-members (35.0%).
+  - Because the GOTV group was already more likely to vote, the observed 20.35% difference in Part A likely overstates the true causal effect.
+
+**Part C**
+```{r, echo=FALSE, message=FALSE,warning=FALSE}
+library(MatchIt)
+library(dplyr)
+library(knitr)
+
+match_out <- matchit(GOTV_call ~ voted1996 + AGE + MAJORPTY,
+                     data = turnout,
+                     method = "nearest",
+                     distance = "mahalanobis",
+                     ratio = 5)
+
+matched_df <- match.data(match_out)
+
+balance_tbl <- matched_df %>%
+  group_by(GOTV_call) %>%
+  summarise(
+    count = n(),
+    mean_v96 = mean(voted1996),
+    mean_age = mean(AGE),
+    mean_party = mean(MAJORPTY)
+  )
+print(balance_tbl)
+
+n_treated <- sum(matched_df$GOTV_call == 1)
+n_control <- sum(matched_df$GOTV_call == 0)
+
+v96_treat <- mean(matched_df$voted1996[matched_df$GOTV_call == 1])
+v96_ctrl <- mean(matched_df$voted1996[matched_df$GOTV_call == 0])
+diff_v96 <- v96_treat - v96_ctrl
+se_v96 <- sqrt((v96_treat*(1-v96_treat)/n_treated) + (v96_ctrl*(1-v96_ctrl)/n_control))
+ci_v96 <- c(diff_v96 - 1.96*se_v96, diff_v96 + 1.96*se_v96)
+
+age_treat <- mean(matched_df$AGE[matched_df$GOTV_call == 1])
+age_ctrl <- mean(matched_df$AGE[matched_df$GOTV_call == 0])
+diff_age <- age_treat - age_ctrl
+se_age <- sqrt(var(matched_df$AGE[matched_df$GOTV_call == 1])/n_treated +
+               var(matched_df$AGE[matched_df$GOTV_call == 0])/n_control)
+ci_age <- c(diff_age - 1.96*se_age, diff_age + 1.96*se_age)
+
+party_treat <- mean(matched_df$MAJORPTY[matched_df$GOTV_call == 1])
+party_ctrl <- mean(matched_df$MAJORPTY[matched_df$GOTV_call == 0])
+diff_party <- party_treat - party_ctrl
+se_party <- sqrt((party_treat*(1-party_treat)/n_treated) + (party_ctrl*(1-party_ctrl)/n_control))
+ci_party <- c(diff_party - 1.96*se_party, diff_party + 1.96*se_party)
+
+ci_table <- data.frame(
+  Variable = c("voted1996", "AGE", "MAJORPTY"),
+  CI_Lower = c(round(ci_v96[1], 3), round(ci_age[1], 1), round(ci_party[1], 3)),
+  CI_Upper = c(round(ci_v96[2], 3), round(ci_age[2], 1), round(ci_party[2], 3))
+)
+kable(ci_table, caption = "Confidence Intervals for Differences")
+
+gotv_vote <- mean(matched_df$voted1998[matched_df$GOTV_call == 1])
+no_gotv_vote <- mean(matched_df$voted1998[matched_df$GOTV_call == 0])
+diff_vote <- gotv_vote - no_gotv_vote
+
+se_vote <- sqrt((gotv_vote * (1 - gotv_vote) / n_treated) +
+                (no_gotv_vote * (1 - no_gotv_vote) / n_control))
+ci_vote <- c(diff_vote - 1.96 * se_vote, diff_vote + 1.96 * se_vote)
+
+final_effects <- data.frame(
+  GOTV_Voted = round(gotv_vote, 4),
+  No_GOTV_Voted = round(no_gotv_vote, 4),
+  Difference = round(diff_vote, 4),
+  CI_Lower = round(ci_vote[1], 4),
+  CI_Upper = round(ci_vote[2], 4)
+)
+print(final_effects)
+
+comparison_table <- data.frame(
+  Analysis = c("Unmatched", "Matched"),
+  GOTV_Group = c(0.6478, round(gotv_vote, 4)),
+  Control_Group = c(0.4442, round(no_gotv_vote, 4)),
+  Difference = c(0.2035, round(diff_vote, 4)),
+  CI_Lower = c(0.1432, round(ci_vote[1], 4)),
+  CI_Upper = c(0.2638, round(ci_vote[2], 4))
+)
+kable(comparison_table, caption = "Unmatched vs Matched Results")
+
+
+```
+
+The matched analysis demonstrates a statistically significant positive effect of GOTV calls on voter turnout. After matching on key confounders—voted1996, AGE, and MAJORPTY—the difference in voting rates between those who received a GOTV call and those who did not was 9.47 percentage points, with a 95% confidence interval of [0.0290, 0.1604]. Because all confidence intervals for the confounder differences include zero, we can conclude that the matching procedure successfully balanced the treatment and control groups. This matched estimate is notably smaller than the unmatched difference of 20.35 percentage points, suggesting that the original effect was inflated by confounding.
