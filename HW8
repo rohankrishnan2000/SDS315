@@ -1,0 +1,150 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(boot)
+```
+# **Question 1**
+
+**Part A**
+```{r,echo=FALSE,message=FALSE,}
+
+
+creatine <- read.csv("creatinine.csv")
+model <- lm(creatclear ~ age, data = creatine)
+
+
+predict(model, data.frame(age = 55))
+```
+
+We would expect a creatinine clearance of 113.723 for a 55 year old. I got this by creating a linear model for creatinine clearance vs. age, then using the model to predict the clearance for a 55 year old. 
+
+**Part B**
+```{r,echo=FALSE,message=FALSE,}
+coef(model)["age"]
+```
+The creatinine clearance decreases by 0.62 mL/minute per year of age. I found this number by finding the coefficient of the linear model of clearance vs age.
+
+**Part C**
+```{r,echo=FALSE,message=FALSE,}
+predict_40 <- predict(model, data.frame(age = 40))
+predict_60 <- predict(model, data.frame(age = 60))
+
+actual_40 <- 135
+actual_60 <- 112
+
+resid_40 <- actual_40 - predict_40
+resid_60 <- actual_60 - predict_60
+
+resid_40
+resid_60
+```
+
+A 40 year old with a rate of 135 is better. I got this by calculating the expected value for creatinine clearance for each age then subtracting it from the actual value. The 40 year old's actual value was 11.99 mL/minute higher than the expected whereas the 60 year old's was only 1.38 mL/minute higher. This means the 40-year-old has a healthier creatinine clearance rate for their age than the 60-year-old, because their actual value is much further above the expected value.
+
+# **Question 2**
+
+```{r,echo=FALSE,message=FALSE}
+covid <- read.csv("covid.csv")
+
+covid <- covid %>%
+  filter(deaths > 0) %>%  
+  mutate(log_deaths = log(deaths))
+
+model_italy <- lm(log_deaths ~ days_since_first_death, data = filter(covid, country == "Italy"))
+model_spain <- lm(log_deaths ~ days_since_first_death, data = filter(covid, country == "Spain"))
+
+growth_rate_italy <- coef(model_italy)[2]
+growth_rate_spain <- coef(model_spain)[2]
+
+doubling_time_italy <- log(2) / growth_rate_italy
+doubling_time_spain <- log(2) / growth_rate_spain
+
+bootstrap_growth <- function(data, indices) {
+  sample_data <- data[indices, ]
+  model <- lm(log_deaths ~ days_since_first_death, data = sample_data)
+  r <- coef(model)[2]
+  dt <- log(2) / r
+  return(c(growth_rate = r, doubling_time = dt))
+}
+
+italy_data <- filter(covid, country == "Italy")
+boot_italy <- boot(data = italy_data, statistic = bootstrap_growth, R = 1000)
+ci_growth_italy <- boot.ci(boot_italy, index = 1, type = "perc")$percent[4:5]
+ci_doubling_italy <- boot.ci(boot_italy, index = 2, type = "perc")$percent[4:5]
+
+spain_data <- filter(covid, country == "Spain")
+boot_spain <- boot(data = spain_data, statistic = bootstrap_growth, R = 1000)
+ci_growth_spain <- boot.ci(boot_spain, index = 1, type = "perc")$percent[4:5]
+ci_doubling_spain <- boot.ci(boot_spain, index = 2, type = "perc")$percent[4:5]
+
+round(growth_rate_italy, 3)
+round(doubling_time_italy, 1)
+round(ci_growth_italy, 3)
+round(ci_doubling_italy, 1)
+
+round(growth_rate_spain, 3)
+round(doubling_time_spain, 1)
+round(ci_growth_spain, 3)
+round(ci_doubling_spain, 1)
+
+ggplot(covid, aes(x = days_since_first_death, y = deaths, color = country)) +
+  geom_line() +
+  labs(title = "COVID-19 Daily Deaths Over Time",
+       x = "Days Since First Death",
+       y = "Daily Deaths") +
+  theme_minimal()
+
+
+growth_rate_italy_est <- round(growth_rate_italy, 3)
+growth_rate_italy_ci_lower <- round(ci_growth_italy[1], 3)
+growth_rate_italy_ci_upper <- round(ci_growth_italy[2], 3)
+
+doubling_time_italy_est <- round(doubling_time_italy, 1)
+doubling_time_italy_ci_lower <- round(ci_doubling_italy[1], 1)
+doubling_time_italy_ci_upper <- round(ci_doubling_italy[2], 1)
+
+growth_rate_spain_est <- round(growth_rate_spain, 3)
+growth_rate_spain_ci_lower <- round(ci_growth_spain[1], 3)
+growth_rate_spain_ci_upper <- round(ci_growth_spain[2], 3)
+
+doubling_time_spain_est <- round(doubling_time_spain, 1)
+doubling_time_spain_ci_lower <- round(ci_doubling_spain[1], 1)
+doubling_time_spain_ci_upper <- round(ci_doubling_spain[2], 1)
+```
+
+1. The estimated growth rate for italy is `r growth_rate_italy_est`, and the 95% confidence interval is `r growth_rate_italy_ci_lower` - `r growth_rate_italy_ci_upper`. The doubling time estimate is `r doubling_time_italy_est`, and the 95% confidence interval is `r doubling_time_italy_ci_lower` - `r doubling_time_italy_ci_upper`. 
+2. The estimated growth rate for spain is `r growth_rate_spain_est`, and the 95% confidence interval is `r growth_rate_spain_ci_lower` - `r growth_rate_spain_ci_upper`. The doubling time estimate is `r doubling_time_spain_est`, and the 95% confidence interval is `r doubling_time_spain_ci_lower` - `r doubling_time_spain_ci_upper`. 
+
+# **Question 3**
+```{r,echo=FALSE,message=FALSE,}
+milk <- read.csv("milk.csv")
+
+milk <- milk %>%
+  mutate(log_price = log(price),
+         log_sales = log(sales))
+
+model <- lm(log_sales ~ log_price, data = milk)
+beta_est <- coef(model)[2]
+
+bootstrap_beta <- function(data, indices) {
+  sample_data <- data[indices, ]
+  model <- lm(log_sales ~ log_price, data = sample_data)
+  return(coef(model)[2])
+}
+
+set.seed(42)
+boot_beta <- boot(data = milk, statistic = bootstrap_beta, R = 1000)
+ci_beta <- boot.ci(boot_beta, type = "perc")$percent[4:5]
+
+beta_est_rounded <- round(beta_est, 3)
+ci_beta_lower <- round(ci_beta[1], 3)
+ci_beta_upper <- round(ci_beta[2], 3)
+
+beta_est_rounded
+ci_beta_lower
+ci_beta_upper
+
+```
+
+To estimate the price elasticity of demand for milk, I log-transformed both price and sales and fit a linear regression of log(sales) on log(price). The slope of this regression corresponds to the elasticity coefficient B in the power-law demand model Q= kp^B. I then bootstrapped the data with 1,000 resamples to calculate a 95% confidence interval. The estimated price elasticity is –1.613, with a 95% confidence interval of [–1.774, –1.452].
