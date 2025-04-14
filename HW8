@@ -1,3 +1,20 @@
+---
+title: "Hw8"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: true
+    keep_tex: true
+    toc: false
+  html_document: default
+header-includes:
+  - \usepackage{hyperref}
+  - \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+---
+# Github
+You can find my code on Github [\href{https://github.com/rohankrishnan2000/SDS315/blob/main/HW8}{\textcolor{blue}{\underline{here}}}].
+---
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
