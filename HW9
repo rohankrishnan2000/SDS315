@@ -1,0 +1,254 @@
+---
+title: "Hw9"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: true
+    keep_tex: true
+    toc: false
+  html_document: default
+header-includes:
+  - \usepackage{hyperref}
+  - \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+---
+# Github
+You can find my code on Github [\href{https://github.com/rohankrishnan2000/SDS315/blob/main/HW9}{\textcolor{blue}{\underline{here}}}].
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, tidy = TRUE, fig.width=8,fig.height=6)
+library(tidyverse)
+library(ggplot2)
+library(RColorBrewer)
+library(mosaic)
+library(broom)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(knitr)
+```
+
+# **Problem 1**
+### Part A
+
+```{r}
+solder <- read.csv("solder.csv")
+head(solder)
+
+library(ggplot2)
+ggplot(solder, aes(x = Opening, y = skips)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(title = "Number of Skips by Solder Gun Opening Size",
+       x = "Opening Size",
+       y = "Number of Skips",
+       caption= "This boxplot shows how the number of solder skips varies with the size of the solder gun opening.") + 
+  theme(
+  plot.caption = element_text(hjust = 0.5, size= 12),
+  )
+
+ggplot(solder, aes(x = Solder, y = skips)) +
+  geom_boxplot(fill = "lightgreen") +
+  labs(title = "Number of Skips by Solder Thickness",
+       x = "Solder Thickness",
+       y = "Number of Skips",
+       caption= "This boxplot illustrates the relationship between solder thickness and the number of skips.") + 
+  theme(
+  plot.caption = element_text(hjust = 0.5, size= 12),
+  )
+
+
+
+model <- lm(skips ~ Opening * Solder, data = solder)
+
+summary(model)
+
+confint(model, level = 0.95)
+```
+
+### Part B
+```{r}
+# Fit the model with interaction
+model <- lm(skips ~ Opening * Solder, data = solder)
+
+# Summary of model
+summary(model)
+
+# Confidence intervals for each coefficient
+confint(model, level = 0.95)
+
+coef_table <- tidy(model, conf.int = TRUE)
+
+# Round for cleaner display
+coef_table <- coef_table[, c("term", "estimate", "conf.low", "conf.high")]
+names(coef_table) <- c("Term", "Estimate", "95% CI Lower", "95% CI Upper")
+coef_table$Estimate <- round(coef_table$Estimate, 3)
+coef_table$`95% CI Lower` <- round(coef_table$`95% CI Lower`, 3)
+coef_table$`95% CI Upper` <- round(coef_table$`95% CI Upper`, 3)
+
+print(coef_table)
+```
+### Part C
+---
+
+**SolderThin:**
+Using thin solder instead of thick (with a large opening) is associated with an average increase of 2.28 skips. This effect is statistically significant, as its 95% confidence interval (0.836 to 3.724) does not contain zero.
+---
+
+**OpeningM:SolderThin:**
+The interaction between medium opening and thin solder results in 0.74 fewer skips than expected under an additive model. However, this interaction is not statistically significant, with a 95% CI of −2.782 to 1.302.
+---
+
+**OpeningS:SolderThin:**
+For small openings combined with thin solder, the number of skips is 9.65 higher than expected based on the individual effects. This interaction is strongly significant, with a 95% CI ranging from 7.611 to 11.696.
+
+---
+
+**OpeningS:**
+Switching to a small opening (with thick solder) leads to an estimated increase of 5.13 skips compared to using a large opening. This is a large and statistically significant effect, supported by the 95% CI (3.682 to 6.571).
+---
+
+**OpeningM:**
+When using a medium opening instead of a large one (with thick solder), the number of skips increases by about 2.41 on average. This effect is statistically significant since the 95% confidence interval (0.962 to 3.851) excludes zero.
+
+
+---
+
+**Intercept:**
+The intercept (0.393) represents the expected number of skips when using a large opening and thick solder—the baseline condition. Since the confidence interval (−0.628 to 1.415) includes zero, this estimate is not statistically different from zero.
+
+---
+
+### Part D
+Based on the analysis, the best combination to minimize solder skips is using a large opening with thick solder. This setup consistently shows the fewest manufacturing flaws, while all other combinations, especially small openings with thin solder, lead to significantly more skips. The data suggest that both smaller openings and thinner solder increase defects, and their negative effects are even greater when combined. Therefore, large opening with thick solder is the most reliable choice for ensuring quality.
+
+
+# **Problem 2**
+
+### Part A
+```{r}
+groceries <- read.csv("groceries.csv")
+
+# Compute average price per store
+store_avg <- groceries %>%
+  group_by(Store) %>%
+  summarize(mean_price = mean(Price, na.rm = TRUE)) %>%
+  arrange(mean_price)
+
+# Plot
+ggplot(store_avg, aes(x = reorder(Store, mean_price), y = mean_price)) +
+  geom_bar(stat = "identity", fill = "#4682B4") +
+  coord_flip() +
+  labs(
+    title = "Mean Product Price by Store",
+    x = "Store",
+    y = "Average Price (USD)",
+    caption = "Bar plot showing variation in average price across grocery stores."
+  ) +
+  theme_minimal()
+```
+
+
+### Part B
+```{r}
+product_counts <- groceries %>%
+  group_by(Product) %>%
+  summarize(num_stores = n_distinct(Store)) %>%
+  arrange(num_stores)
+
+ggplot(product_counts, aes(x = reorder(Product, num_stores), y = num_stores)) +
+  geom_col(fill = "#FF8C00") +
+  coord_flip() +
+  labs(
+    title = "Availability of Products Across Stores",
+    x = "Product",
+    y = "Number of Stores",
+    caption = "This graph shows how many different stores carry each product. Some products are more widely available than others."
+  ) +
+  theme_minimal()
+```
+
+
+
+### Part C
+```{r}
+model_c <- lm(Price ~ Product + Type, data = groceries)
+summary(model_c)
+confint(model_c)
+```
+
+Compared with ordinary grocery stores, convenience stores charge somewhere between $0.41 and $0.92 more for the same product.
+
+
+### Part D
+```{r}
+# Fit the model
+model_d <- lm(Price ~ Product + Store, data = groceries)
+
+# Extract all coefficients
+all_coefs <- summary(model_d)$coefficients
+
+# Convert to a data frame
+coef_df <- as.data.frame(all_coefs)
+
+# Keep only rows that contain "Store"
+store_coefs <- coef_df[grep("^Store", rownames(coef_df)), ]
+
+# Optional: clean up rownames
+store_coefs$Store <- gsub("^Store", "", rownames(store_coefs))
+rownames(store_coefs) <- NULL
+
+# Reorder by estimate
+store_coefs <- store_coefs %>%
+  dplyr::select(Store, Estimate = Estimate, `Std. Error`, `Pr(>|t|)`) %>%
+  arrange(Estimate)
+
+# View store-specific effects
+store_coefs
+```
+
+The two stores that charge the lowest prices for the same product are Walmart and Kroger Fresh Fare, while CVS is among the highest priced stores when controlling for product.
+These differences reflect real pricing strategies, not product assortment, and support the idea that convenience stores or high-end stores may be more expensive even for the same items.
+
+
+### Part E
+The model shows that Central Market charges only about 7 cents more per product than HEB, after controlling for the same items. This small difference suggests that Central Market does not significantly overcharge for the same products, and its reputation for higher prices is likely due to offering different or more premium items. Compared to larger price differences between other stores, like Walmart being about 99 cents cheaper, the Central Market–HEB gap is minor. Therefore, the data support the conclusion that Central Market charges a similar amount to HEB for the same product.
+
+
+
+### Part F
+```{r}
+groceries <- groceries %>%
+  mutate(Income10K = Income / 10000)
+
+model_f <- lm(Price ~ Product + Income10K, data = groceries)
+summary(model_f)
+
+library(lm.beta)
+lm.beta(model_f)
+```
+
+Consumers in poorer ZIP codes appear to pay more for the same product, on average. This conclusion is based on the negative coefficient for Income10K (−0.0316), which means that as income increases, price decreases. Therefore, lower-income areas tend to face slightly higher prices. A one-standard deviation increase in the income of a ZIP code is associated with a 0.032 standard-deviation decrease in the price that consumers in that ZIP code pay for the same product.
+
+# **Problem 3**
+
+### A. 
+True, Figure A1 shows a clear positive trend between % minority and number of FAIR policies per 100 housing units.
+Additionally, model_A reports a statistically significant positive coefficient for minority (estimate = 0.014, p < 0.001), indicating that ZIP codes with a higher percentage of minority residents do tend to have more FAIR policies.
+
+### B. 
+False, There is no evidence of an interaction effect between minority percentage and housing age.
+Figure B1 shows a weak relationship, and model_B (minority ~ age) reports a nonsignificant coefficient (p = 0.125).
+Also, no interaction between minority and age was modeled or discussed in model_E.
+
+### C. 
+True, Figure C1 shows different slopes in high vs. low fire risk ZIP codes.
+Model_C includes an interaction term (minority:fire_riskLow) which has a non-significant p-value (p = 0.839), but the main effect of minority is only significant in high fire risk ZIP codes.
+Thus, the strength of the minority–FAIR policy relationship is stronger in high fire risk areas, supporting the statement.
+
+### D. 
+False, Model_D2 shows that after controlling for income, minority percentage remains significant (estimate = 0.010, p = 0.002). So, income does not explain away the association between minority and FAIR policies.
+
+### E. 
+True, Model_E includes minority, income, fire, and age, and shows that the coefficient for minority remains statistically significant (estimate = 0.008, p = 0.006).
+Therefore, even after controlling for all other listed factors, minority percentage is still associated with higher FAIR policy uptake.
+
